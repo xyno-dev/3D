@@ -5,9 +5,9 @@ struct Camera {
     x: f32,
     y: f32,
     z: f32,
-    angle_xy: f32,
     yaw: f32,
     pitch: f32,
+    fov: f32
 }
 
 fn point(pos: Vec2) -> () {
@@ -36,8 +36,8 @@ fn screen(point: Vec2) -> Vec2 {
     )
 }
 
-fn project(vertice: Vec3) -> Vec2 {
-    Vec2::new(vertice.x / vertice.z, vertice.y / vertice.z)
+fn project(vertice: Vec3, fov: f32) -> Vec2 {
+    Vec2::new((vertice.x / vertice.z) * fov, (vertice.y / vertice.z) * fov)
 }
 
 fn translate_z(vertice: Vec3, dz: f32) -> Vec3 {
@@ -93,7 +93,7 @@ fn transform(vertice: Vec3, camera: Camera, yaw: f32, pitch: f32) -> Vec2 {
     screen(project(transform_camera(
         rotate_yz(rotate_xz(vertice, yaw), pitch),
         camera,
-    )))
+    ), camera.fov))
 }
 
 #[macroquad::main("BasicShapes")]
@@ -108,8 +108,8 @@ async fn main() {
         y: 0.0,
         z: 5.0,
         yaw: 0.0,
-        angle_xy: 0.0,
         pitch: 0.0,
+        fov: 1.0
     };
     let vs: &[Vec3] = &[
         Vec3::new(3.0, 3.0, 3.0),
@@ -305,8 +305,8 @@ async fn main() {
         draw_fps();
         draw_text(
             &format!(
-                "CAM: {} {} {} {} {}",
-                camera.x, camera.y, camera.z, camera.yaw, camera.pitch
+                "CAM: {} {} {} {} {} {}",
+                camera.x, camera.y, camera.z, camera.yaw, camera.pitch, camera.fov
             ),
             0.0,
             35.0,
@@ -323,7 +323,7 @@ async fn main() {
         draw_text(
             &format!("EDGES: {}", if edges { "ON" } else { "OFF" }),
             0.0,
-            75.0,
+        75.0,
             30.0,
             WHITE,
         );
@@ -334,6 +334,8 @@ async fn main() {
             30.0,
             WHITE,
         );
+        
+        camera.fov = (camera.fov + mouse_wheel().1 / 2.0).clamp(0.5, 10.0);
 
         if auto_rotate_xz {
             yaw += 0.01
