@@ -1,20 +1,32 @@
 use macroquad::prelude::*;
 
+#[derive(Copy, Clone)]
 struct Camera {
     x: f32,
     y: f32,
     z: f32,
     angle_xy: f32,
     angle_xz: f32,
-    angle_yz: f32
+    angle_yz: f32,
 }
 
 fn point(pos: Vec2) -> () {
     draw_circle(pos.x, pos.y, 5.0, DARKGREEN);
 }
 
-fn line(v1: Vec2, v2: Vec2, z: f32) -> () {
-    draw_line(v1.x, v1.y, v2.x, v2.y, 50.0 / z, GREEN);
+fn line(p1: Vec2, p2: Vec2, camera: Camera, end1: Vec3, end2: Vec3) -> () {
+    let distance1: f32 = (
+        (camera.x - end1.x).powi(2) +
+        (camera.y - end1.y).powi(2) +
+        (camera.z - end1.z).powi(2)
+    ).sqrt();
+    let distance2: f32 = (
+        (camera.x - end2.x).powi(2) +
+        (camera.y - end2.y).powi(2) +
+        (camera.z - end2.z).powi(2)
+    ).sqrt();
+    let mean_distance = (distance1 + distance2) / 2.0;
+    draw_line(p1.x, p1.y, p2.x, p2.y, (10.0/mean_distance).clamp(1.5, 3.0), GREEN);
 }
 
 fn screen(point: Vec2) -> Vec2 {
@@ -55,18 +67,32 @@ fn rotate_yz(vertice: Vec3, angle: f32) -> Vec3 {
     )
 }
 
-fn translate_camera(vertice: Vec3, camera_pos: Vec3) -> Vec3 {
+fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
+    let sin_xz = camera.angle_xz.sin();
+    let cos_xz = camera.angle_xz.cos();
+    let sin_yz = camera.angle_yz.sin();
+    let cos_yz = camera.angle_yz.cos();
+    let translated: Vec3 = Vec3::new(
+        vertice.x - camera.x,
+        vertice.y - camera.y,
+        vertice.z + camera.z
+    );
+    let rotated_xz: Vec3 = Vec3::new(
+        translated.x * cos_xz - translated.z * sin_xz,
+        translated.y,
+        translated.x * sin_xz + translated.z * cos_xz,
+    );
     Vec3::new(
-        vertice.x + camera_pos.x,
-        vertice.y - camera_pos.y,
-        vertice.z - camera_pos.z,
+        rotated_xz.x,
+        rotated_xz.y * cos_yz - rotated_xz.z * sin_yz,
+        rotated_xz.y * sin_yz + rotated_xz.z * cos_yz,
     )
 }
 
-fn transform(vertice: Vec3, camera_pos: Vec3, angle_xz: f32, angle_yz: f32) -> Vec2 {
-    screen(project(translate_camera(
+fn transform(vertice: Vec3, camera: Camera, angle_xz: f32, angle_yz: f32) -> Vec2 {
+    screen(project(transform_camera(
         rotate_yz(rotate_xz(vertice, angle_xz), angle_yz),
-        camera_pos,
+        camera,
     )))
 }
 
@@ -83,7 +109,7 @@ async fn main() {
         z: 5.0,
         angle_xz: 0.0,
         angle_xy: 0.0,
-        angle_yz: 0.0
+        angle_yz: 0.0,
     };
     let vs: &[Vec3] = &[
         Vec3::new(3.0, 3.0, 3.0),
@@ -277,7 +303,16 @@ async fn main() {
     loop {
         clear_background(BLACK);
         draw_fps();
-        draw_text(&format!("Z: {}", camera_pos.z), 0.0, 35.0, 30.0, WHITE);
+        draw_text(
+            &format!(
+                "CAM: {} {} {} {} {}",
+                camera.x, camera.y, camera.z, camera.angle_xz, camera.angle_yz
+            ),
+            0.0,
+            35.0,
+            30.0,
+            WHITE,
+        );
         draw_text(
             &format!("AUTO ROTATE: {}", if auto_rotate_xz { "ON" } else { "OFF" }),
             0.0,
@@ -305,8 +340,8 @@ async fn main() {
         }
 
         if is_mouse_button_down(MouseButton::Right) {
-            angle_xz -= mouse_delta_position().x;
-            angle_yz += mouse_delta_position().y;
+            camera.angle_xz -= mouse_delta_position().x;
+            camera.angle_yz += mouse_delta_position().y;
         }
 
         if is_key_pressed(KeyCode::Space) {
@@ -318,24 +353,22 @@ async fn main() {
         }
 
         if is_key_down(KeyCode::A) {
-            camera_pos.x -= 0.5
+            camera.x -= 0.5
         } else if is_key_down(KeyCode::D) {
-            camera_pos.x += 0.5
+            camera.x += 0.5
         } else if is_key_down(KeyCode::W) {
-            camera_pos.z -= 0.5
+            camera.z -= 0.5
         } else if is_key_down(KeyCode::S) {
-            camera_pos.z += 0.5
+            camera.z += 0.5
         } else if is_key_down(KeyCode::Q) {
-            camera_pos.y -= 0.5
+            camera.y -= 0.5
         } else if is_key_down(KeyCode::E) {
-            camera_pos.y += 0.5
+            camera.y += 0.5
         }
-
-
 
         if vertices {
             for v in vs {
-                point(transform(*v, camera_pos, angle_xz, angle_yz))
+                point(transform(*v, camera, angle_xz, angle_yz))
             }
         }
 
@@ -345,9 +378,11 @@ async fn main() {
                     let a = vs[f[i] as usize];
                     let b = vs[f[(i + 1) % f.len()] as usize];
                     line(
-                        transform(a, camera_pos, angle_xz, angle_yz),
-                        transform(b, camera_pos, angle_xz, angle_yz),
-                        camera_pos.z,
+                        transform(a, camera, angle_xz, angle_yz),
+                        transform(b, camera, angle_xz, angle_yz),
+                        camera,
+                        transform_camera(a, camera),
+                        transform_camera(b, camera)
                     );
                 }
             }
