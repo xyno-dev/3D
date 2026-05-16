@@ -6,8 +6,8 @@ struct Camera {
     y: f32,
     z: f32,
     angle_xy: f32,
-    angle_xz: f32,
-    angle_yz: f32,
+    yaw: f32,
+    pitch: f32,
 }
 
 fn point(pos: Vec2) -> () {
@@ -68,10 +68,10 @@ fn rotate_yz(vertice: Vec3, angle: f32) -> Vec3 {
 }
 
 fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
-    let sin_xz = camera.angle_xz.sin();
-    let cos_xz = camera.angle_xz.cos();
-    let sin_yz = camera.angle_yz.sin();
-    let cos_yz = camera.angle_yz.cos();
+    let sin_xz = camera.yaw.sin();
+    let cos_xz = camera.yaw.cos();
+    let sin_yz = camera.pitch.sin();
+    let cos_yz = camera.pitch.cos();
     let translated: Vec3 = Vec3::new(
         vertice.x - camera.x,
         vertice.y - camera.y,
@@ -89,17 +89,17 @@ fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
     )
 }
 
-fn transform(vertice: Vec3, camera: Camera, angle_xz: f32, angle_yz: f32) -> Vec2 {
+fn transform(vertice: Vec3, camera: Camera, yaw: f32, pitch: f32) -> Vec2 {
     screen(project(transform_camera(
-        rotate_yz(rotate_xz(vertice, angle_xz), angle_yz),
+        rotate_yz(rotate_xz(vertice, yaw), pitch),
         camera,
     )))
 }
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    let mut angle_xz: f32 = 0.0;
-    let mut angle_yz: f32 = 0.0;
+    let mut yaw: f32 = 0.0;
+    let mut pitch: f32 = 0.0;
     let mut auto_rotate_xz: bool = false;
     let mut edges: bool = true;
     let mut vertices: bool = false;
@@ -107,9 +107,9 @@ async fn main() {
         x: 0.0,
         y: 0.0,
         z: 5.0,
-        angle_xz: 0.0,
+        yaw: 0.0,
         angle_xy: 0.0,
-        angle_yz: 0.0,
+        pitch: 0.0,
     };
     let vs: &[Vec3] = &[
         Vec3::new(3.0, 3.0, 3.0),
@@ -306,7 +306,7 @@ async fn main() {
         draw_text(
             &format!(
                 "CAM: {} {} {} {} {}",
-                camera.x, camera.y, camera.z, camera.angle_xz, camera.angle_yz
+                camera.x, camera.y, camera.z, camera.yaw, camera.pitch
             ),
             0.0,
             35.0,
@@ -336,12 +336,12 @@ async fn main() {
         );
 
         if auto_rotate_xz {
-            angle_xz += 0.01
+            yaw += 0.01
         }
 
         if is_mouse_button_down(MouseButton::Right) {
-            camera.angle_xz -= mouse_delta_position().x;
-            camera.angle_yz += mouse_delta_position().y;
+            camera.yaw -= mouse_delta_position().x;
+            camera.pitch += mouse_delta_position().y;
         }
 
         if is_key_pressed(KeyCode::Space) {
@@ -353,13 +353,19 @@ async fn main() {
         }
 
         if is_key_down(KeyCode::A) {
-            camera.x -= 0.5
+            camera.x -= 0.5 * camera.yaw.cos();
+            camera.z -= 0.5 * camera.yaw.sin();
         } else if is_key_down(KeyCode::D) {
-            camera.x += 0.5
+            camera.x += 0.5 * camera.yaw.cos();
+            camera.z += 0.5 * camera.yaw.sin();
         } else if is_key_down(KeyCode::W) {
-            camera.z -= 0.5
+            camera.x += 0.5 * camera.pitch.cos() * camera.yaw.sin();
+            camera.y += 0.5 * camera.pitch.sin();
+            camera.z -= 0.5 * camera.pitch.cos() * camera.yaw.cos();
         } else if is_key_down(KeyCode::S) {
-            camera.z += 0.5
+            camera.x -= 0.5 * camera.pitch.cos() * camera.yaw.sin();
+            camera.y -= 0.5 * camera.pitch.sin();
+            camera.z += 0.5 * camera.pitch.cos() * camera.yaw.cos();
         } else if is_key_down(KeyCode::Q) {
             camera.y -= 0.5
         } else if is_key_down(KeyCode::E) {
@@ -368,7 +374,7 @@ async fn main() {
 
         if vertices {
             for v in vs {
-                point(transform(*v, camera, angle_xz, angle_yz))
+                point(transform(*v, camera, yaw, pitch))
             }
         }
 
@@ -378,8 +384,8 @@ async fn main() {
                     let a = vs[f[i] as usize];
                     let b = vs[f[(i + 1) % f.len()] as usize];
                     line(
-                        transform(a, camera, angle_xz, angle_yz),
-                        transform(b, camera, angle_xz, angle_yz),
+                        transform(a, camera, yaw, pitch),
+                        transform(b, camera, yaw, pitch),
                         camera,
                         transform_camera(a, camera),
                         transform_camera(b, camera)
