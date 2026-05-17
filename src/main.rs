@@ -30,8 +30,9 @@ fn line(p1: Vec2, p2: Vec2, camera: Camera, end1: Vec3, end2: Vec3) -> () {
 }
 
 fn screen(point: Vec2) -> Vec2 {
+    let aspect = screen_width() / screen_height();
     Vec2::new(
-        (point.x + 1.0) / 2.0 * screen_width(),
+        (point.x / aspect + 1.0) / 2.0 * screen_width(),
         (1.0 - (point.y + 1.0) / 2.0) * screen_height(),
     )
 }
@@ -100,9 +101,10 @@ fn transform(vertice: Vec3, camera: Camera, yaw: f32, pitch: f32) -> Vec2 {
 async fn main() {
     let mut yaw: f32 = 0.0;
     let mut pitch: f32 = 0.0;
-    let mut auto_rotate_xz: bool = false;
+    let mut rotate: bool = false;
     let mut edges: bool = true;
     let mut vertices: bool = false;
+    let mut hud: bool = true;
     let mut camera: Camera = Camera {
         x: 0.0,
         y: 0.0,
@@ -300,44 +302,30 @@ async fn main() {
     //     vec![49, 17, 19],
     //     vec![17, 49, 53],
     // ];
+
     loop {
-        clear_background(BLACK);
-        draw_fps();
-        draw_text(
-            &format!(
-                "CAM: {} {} {} {} {} {}",
-                camera.x, camera.y, camera.z, camera.yaw, camera.pitch, camera.fov
-            ),
-            0.0,
-            35.0,
-            30.0,
-            WHITE,
-        );
-        draw_text(
-            &format!("AUTO ROTATE: {}", if auto_rotate_xz { "ON" } else { "OFF" }),
-            0.0,
-            55.0,
-            30.0,
-            WHITE,
-        );
-        draw_text(
-            &format!("EDGES: {}", if edges { "ON" } else { "OFF" }),
-            0.0,
-        75.0,
-            30.0,
-            WHITE,
-        );
-        draw_text(
-            &format!("VERTICES: {}", if vertices { "ON" } else { "OFF" }),
-            0.0,
-            95.0,
-            30.0,
-            WHITE,
-        );
+        clear_background(Color::from_hex(0x0d0d0d));
+        let hud_items: &[String] = &[
+            format!("X: {}", camera.x),
+            format!("Y: {}", camera.y),
+            format!("Z: {}", camera.z),
+            format!("YAW: {}", camera.yaw),
+            format!("PITCH: {}", camera.pitch),
+            format!("FOV: {}", camera.fov),
+            format!("ROTATE: {}", if rotate { "ON" } else { "OFF" }),
+            format!("EDGES: {}", if edges { "ON" } else { "OFF" }),
+            format!("VERTICES: {}", if vertices { "ON" } else { "OFF" })
+        ];
+        if hud {
+            draw_fps();
+            for (i, item) in hud_items.iter().enumerate() {
+                draw_text(item, 0.0, 35.0 + (20.0 * i as f32), 30.0, WHITE);
+            }
+        }
         
         camera.fov = (camera.fov + mouse_wheel().1 / 2.0).clamp(0.5, 10.0);
 
-        if auto_rotate_xz {
+        if rotate {
             yaw += 0.01
         }
 
@@ -347,12 +335,15 @@ async fn main() {
         }
 
         if is_key_pressed(KeyCode::Space) {
-            auto_rotate_xz = !auto_rotate_xz;
+            rotate = !rotate;
         } else if is_key_pressed(KeyCode::L) {
             edges = !edges;
         } else if is_key_pressed(KeyCode::V) {
             vertices = !vertices;
+        } else if is_key_pressed(KeyCode::H) {
+            hud = !hud;
         }
+
 
         if is_key_down(KeyCode::A) {
             camera.x -= 0.5 * camera.yaw.cos();
