@@ -344,21 +344,25 @@ async fn main() {
             hud = !hud;
         }
 
+        let yaw_sin = camera.yaw.sin();
+        let yaw_cos = camera.yaw.cos();
+        let pitch_sin = camera.pitch.sin();
+        let pitch_cos = camera.pitch.cos();
 
         if is_key_down(KeyCode::A) {
-            camera.x -= 0.5 * camera.yaw.cos();
-            camera.z -= 0.5 * camera.yaw.sin();
+            camera.x -= 0.5 * yaw_cos;
+            camera.z -= 0.5 * yaw_sin;
         } else if is_key_down(KeyCode::D) {
-            camera.x += 0.5 * camera.yaw.cos();
-            camera.z += 0.5 * camera.yaw.sin();
+            camera.x += 0.5 * yaw_cos;
+            camera.z += 0.5 * yaw_sin;
         } else if is_key_down(KeyCode::W) {
-            camera.x += 0.5 * camera.pitch.cos() * camera.yaw.sin();
-            camera.y += 0.5 * camera.pitch.sin();
-            camera.z -= 0.5 * camera.pitch.cos() * camera.yaw.cos();
+            camera.x += 0.5 * pitch_cos * yaw_sin;
+            camera.y += 0.5 * pitch_sin;
+            camera.z -= 0.5 * pitch_cos * yaw_cos;
         } else if is_key_down(KeyCode::S) {
-            camera.x -= 0.5 * camera.pitch.cos() * camera.yaw.sin();
-            camera.y -= 0.5 * camera.pitch.sin();
-            camera.z += 0.5 * camera.pitch.cos() * camera.yaw.cos();
+            camera.x -= 0.5 * pitch_cos * yaw_sin;
+            camera.y -= 0.5 * pitch_sin;
+            camera.z += 0.5 * pitch_cos * yaw_cos;
         } else if is_key_down(KeyCode::Q) {
             camera.y -= 0.5
         } else if is_key_down(KeyCode::E) {
