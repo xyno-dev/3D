@@ -69,24 +69,24 @@ fn rotate_yz(vertice: Vec3, angle: f32) -> Vec3 {
 }
 
 fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
-    let sin_xz = camera.yaw.sin();
-    let cos_xz = camera.yaw.cos();
-    let sin_yz = camera.pitch.sin();
-    let cos_yz = camera.pitch.cos();
+    let yaw_sin = camera.yaw.sin();
+    let yaw_cos = camera.yaw.cos();
+    let pitch_sin = camera.pitch.sin();
+    let pitch_cos = camera.pitch.cos();
     let translated: Vec3 = Vec3::new(
         vertice.x - camera.x,
         vertice.y - camera.y,
         vertice.z + camera.z
     );
     let rotated_xz: Vec3 = Vec3::new(
-        translated.x * cos_xz - translated.z * sin_xz,
+        translated.x * yaw_cos - translated.z * yaw_sin,
         translated.y,
-        translated.x * sin_xz + translated.z * cos_xz,
+        translated.x * yaw_sin + translated.z * yaw_cos,
     );
     Vec3::new(
         rotated_xz.x,
-        rotated_xz.y * cos_yz - rotated_xz.z * sin_yz,
-        rotated_xz.y * sin_yz + rotated_xz.z * cos_yz,
+        rotated_xz.y * pitch_cos - rotated_xz.z * pitch_sin,
+        rotated_xz.y * pitch_sin + rotated_xz.z * pitch_cos,
     )
 }
 
