@@ -7,7 +7,7 @@ struct Camera {
     z: f32,
     yaw: f32,
     pitch: f32,
-    fov: f32
+    fov: f32,
 }
 
 fn point(pos: Vec2) -> () {
@@ -15,18 +15,21 @@ fn point(pos: Vec2) -> () {
 }
 
 fn line(p1: Vec2, p2: Vec2, camera: Camera, end1: Vec3, end2: Vec3) -> () {
-    let distance1: f32 = (
-        (camera.x - end1.x).powi(2) +
-        (camera.y - end1.y).powi(2) +
-        (camera.z - end1.z).powi(2)
-    ).sqrt();
-    let distance2: f32 = (
-        (camera.x - end2.x).powi(2) +
-        (camera.y - end2.y).powi(2) +
-        (camera.z - end2.z).powi(2)
-    ).sqrt();
+    let distance1: f32 =
+        ((camera.x - end1.x).powi(2) + (camera.y - end1.y).powi(2) + (camera.z - end1.z).powi(2))
+            .sqrt();
+    let distance2: f32 =
+        ((camera.x - end2.x).powi(2) + (camera.y - end2.y).powi(2) + (camera.z - end2.z).powi(2))
+            .sqrt();
     let mean_distance = (distance1 + distance2) / 2.0;
-    draw_line(p1.x, p1.y, p2.x, p2.y, (10.0/mean_distance).clamp(1.5, 3.0), GREEN);
+    draw_line(
+        p1.x,
+        p1.y,
+        p2.x,
+        p2.y,
+        (10.0 / mean_distance).clamp(1.5, 3.0),
+        GREEN,
+    );
 }
 
 fn screen(point: Vec2) -> Vec2 {
@@ -39,13 +42,6 @@ fn screen(point: Vec2) -> Vec2 {
 
 fn project(vertice: Vec3, fov: f32) -> Vec2 {
     Vec2::new((vertice.x / vertice.z) * fov, (vertice.y / vertice.z) * fov)
-}
-
-fn translate_z(vertice: Vec3, dz: f32) -> Vec3 {
-    Vec3 {
-        z: vertice.z + dz,
-        ..vertice
-    }
 }
 
 fn rotate_xz(vertice: Vec3, angle: f32) -> Vec3 {
@@ -76,7 +72,7 @@ fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
     let translated: Vec3 = Vec3::new(
         vertice.x - camera.x,
         vertice.y - camera.y,
-        vertice.z + camera.z
+        vertice.z + camera.z,
     );
     let rotated_xz: Vec3 = Vec3::new(
         translated.x * yaw_cos - translated.z * yaw_sin,
@@ -91,10 +87,10 @@ fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
 }
 
 fn transform(vertice: Vec3, camera: Camera, yaw: f32, pitch: f32) -> Vec2 {
-    screen(project(transform_camera(
-        rotate_yz(rotate_xz(vertice, yaw), pitch),
-        camera,
-    ), camera.fov))
+    screen(project(
+        transform_camera(rotate_yz(rotate_xz(vertice, yaw), pitch), camera),
+        camera.fov,
+    ))
 }
 
 #[macroquad::main("BasicShapes")]
@@ -111,7 +107,7 @@ async fn main() {
         z: 5.0,
         yaw: 0.0,
         pitch: 0.0,
-        fov: 1.0
+        fov: 1.0,
     };
     let vs: &[Vec3] = &[
         Vec3::new(3.0, 3.0, 3.0),
@@ -314,7 +310,7 @@ async fn main() {
             format!("FOV: {}", camera.fov),
             format!("ROTATE: {}", if rotate { "ON" } else { "OFF" }),
             format!("EDGES: {}", if edges { "ON" } else { "OFF" }),
-            format!("VERTICES: {}", if vertices { "ON" } else { "OFF" })
+            format!("VERTICES: {}", if vertices { "ON" } else { "OFF" }),
         ];
         if hud {
             draw_fps();
@@ -322,7 +318,7 @@ async fn main() {
                 draw_text(item, 0.0, 35.0 + (20.0 * i as f32), 30.0, WHITE);
             }
         }
-        
+
         camera.fov = (camera.fov + mouse_wheel().1 / 2.0).clamp(0.5, 10.0);
 
         if rotate {
@@ -385,7 +381,7 @@ async fn main() {
                         transform(b, camera, yaw, pitch),
                         camera,
                         transform_camera(a, camera),
-                        transform_camera(b, camera)
+                        transform_camera(b, camera),
                     );
                 }
             }
