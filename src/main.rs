@@ -1,4 +1,8 @@
 use macroquad::prelude::*;
+use macroquad::ui::{
+    hash, root_ui,
+    widgets
+};
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -97,55 +101,9 @@ fn transform(vertice: Vec3, camera: Camera, yaw: f32, pitch: f32) -> Vec2 {
     ))
 }
 
-#[macroquad::main("BasicShapes")]
-async fn main() {
-    let mut yaw: f32 = 0.0;
-    let mut pitch: f32 = 0.0;
-    let mut rotate: bool = false;
-    let mut edges: bool = true;
-    let mut vertices: bool = false;
-    let mut hud: bool = true;
-    let mut camera: Camera = Camera {
-        x: 0.0,
-        y: 0.0,
-        z: 5.0,
-        yaw: 0.0,
-        pitch: 0.0,
-        fov: 1.0,
-    };
-
-    // let vs: Vec<Vec3> = vec![
-    //     Vec3::new(3.0, 3.0, 3.0),
-    //     Vec3::new(-3.0, 3.0, 3.0),
-    //     Vec3::new(-3.0, -3.0, 3.0),
-    //     Vec3::new(3.0, -3.0, 3.0),
-    //     Vec3::new(3.0, 3.0, -3.0),
-    //     Vec3::new(-3.0, 3.0, -3.0),
-    //     Vec3::new(-3.0, -3.0, -3.0),
-    //     Vec3::new(3.0, -3.0, -3.0),
-    //     Vec3::new(1.0, 1.0, 1.0),
-    //     Vec3::new(1.0, -1.0, -1.0),
-    //     Vec3::new(-1.0, 1.0, -1.0),
-    //     Vec3::new(-1.0, -1.0, 1.0),
-    // ];
-    //
-    // let fs: Vec<Vec<u8>> = vec![
-    //     vec![0, 1, 2, 3],
-    //     vec![4, 5, 6, 7],
-    //     vec![0, 4],
-    //     vec![1, 5],
-    //     vec![2, 6],
-    //     vec![3, 7],
-    //     vec![8, 9, 10],
-    //     vec![9, 10, 11],
-    //     vec![10, 11, 8],
-    //     vec![11, 8, 9],
-    // ];
-
+fn load_obj(path: &Path, vertice_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
     let mut vs: Vec<Vec3> = Vec::new();
     let mut fs: Vec<Vec<u16>> = Vec::new();
-
-    let path = Path::new("path path path sahur");
     let display = path.display();
 
     let mut file = match File::open(&path) {
@@ -162,12 +120,9 @@ async fn main() {
     let mut file_iterator = s.split("\n");
 
     while let Some(line) = file_iterator.next() {
-        if line.is_empty() {
-            continue;
-        }
-        let line_type = &line[0..2];
+        let Some(line_type) = line.get(0..2) else { continue };
         if line_type == "v " {
-            let mut values = line.split(" ");
+            let mut values = line.trim().split(" ").filter(|&x| !x.is_empty());
             values.next();
             vs.push(Vec3::new(
                 values.next().unwrap().parse::<f32>().unwrap(),
@@ -175,15 +130,40 @@ async fn main() {
                 values.next().unwrap().parse::<f32>().unwrap(),
             ));
         } else if line_type == "f " {
-            let mut triangles = line.split(" ");
+            let mut triangles = line.trim().split(" ").filter(|&x| !x.is_empty());
             let mut face: Vec<u16> = Vec::new();
             triangles.next();
             while let Some(index) = triangles.next() {
-                face.push(index.split("/").next().unwrap().parse::<u16>().unwrap() - 1)
+                face.push(index.split("/").next().unwrap().parse::<u16>().unwrap() + vertice_offset - 1)
             }
             fs.push(face);
         }
     }
+
+    (vs, fs)
+}
+
+#[macroquad::main("BasicShapes")]
+async fn main() {
+    let mut yaw: f32 = 0.0;
+    let mut pitch: f32 = 0.0;
+    let mut rotate: bool = false;
+    let mut edges: bool = true;
+    let mut vertices: bool = false;
+    let mut hud: bool = true;
+    let mut camera: Camera = Camera {
+        x: 0.0,
+        y: 0.0,
+        z: 5.0,
+        yaw: 0.0,
+        pitch: 0.0,
+        fov: 1.0,
+    };
+    let mut command: String = String::new();
+    let mut typing_command: bool = false;
+
+    let mut vs: Vec<Vec3> = Vec::new();
+    let mut fs: Vec<Vec<u16>> = Vec::new();
 
     loop {
         clear_background(Color::from_hex(0x0d0d0d));
@@ -204,11 +184,69 @@ async fn main() {
                 draw_text(item, 0.0, 35.0 + (20.0 * i as f32), 30.0, WHITE);
             }
         }
+        
+        let yaw_sin = camera.yaw.sin();
+        let yaw_cos = camera.yaw.cos();
+        let pitch_sin = camera.pitch.sin();
+        let pitch_cos = camera.pitch.cos();
+
+        if is_key_pressed(KeyCode::Enter) {
+            typing_command = !typing_command;
+        }
+
+        if typing_command {
+            widgets::InputText::new(hash!())
+                .label("Enter Command")
+                .size(Vec2::new(screen_width(), 30.0))
+                .position(Vec2::new(
+                    screen_width() / 4.0,
+                    screen_height() - 30.0
+                ))
+                .ui(&mut root_ui(), &mut command);
+        } else {
+            if !command.is_empty() {
+                let (mut new_vs, mut new_fs) = load_obj(&Path::new(&command), vs.len() as u16);
+                vs.append(&mut new_vs);
+                fs.append(&mut new_fs);
+                command = String::new();
+            }
+
+            if is_key_pressed(KeyCode::Space) {
+                rotate = !rotate;
+            } else if is_key_pressed(KeyCode::L) {
+                edges = !edges;
+            } else if is_key_pressed(KeyCode::V) {
+                vertices = !vertices;
+            } else if is_key_pressed(KeyCode::H) {
+                hud = !hud;
+            }
+
+            if is_key_down(KeyCode::A) {
+                camera.x -= 0.5 * yaw_cos;
+                camera.z -= 0.5 * yaw_sin;
+            } else if is_key_down(KeyCode::D) {
+                camera.x += 0.5 * yaw_cos;
+                camera.z += 0.5 * yaw_sin;
+            } else if is_key_down(KeyCode::W) {
+                camera.x += 0.5 * pitch_cos * yaw_sin;
+                camera.y += 0.5 * pitch_sin;
+                camera.z -= 0.5 * pitch_cos * yaw_cos;
+            } else if is_key_down(KeyCode::S) {
+                camera.x -= 0.5 * pitch_cos * yaw_sin;
+                camera.y -= 0.5 * pitch_sin;
+                camera.z += 0.5 * pitch_cos * yaw_cos;
+            } else if is_key_down(KeyCode::Q) {
+                camera.y -= 0.5;
+            } else if is_key_down(KeyCode::E) {
+                camera.y += 0.5;
+            }
+        }
+
 
         camera.fov = (camera.fov + mouse_wheel().1 / 2.0).clamp(0.5, 10.0);
 
         if rotate {
-            yaw += 0.01
+            yaw += 0.01;
         }
 
         if is_mouse_button_down(MouseButton::Right) {
@@ -216,44 +254,9 @@ async fn main() {
             camera.pitch += mouse_delta_position().y;
         }
 
-        if is_key_pressed(KeyCode::Space) {
-            rotate = !rotate;
-        } else if is_key_pressed(KeyCode::L) {
-            edges = !edges;
-        } else if is_key_pressed(KeyCode::V) {
-            vertices = !vertices;
-        } else if is_key_pressed(KeyCode::H) {
-            hud = !hud;
-        }
-
-        let yaw_sin = camera.yaw.sin();
-        let yaw_cos = camera.yaw.cos();
-        let pitch_sin = camera.pitch.sin();
-        let pitch_cos = camera.pitch.cos();
-
-        if is_key_down(KeyCode::A) {
-            camera.x -= 0.5 * yaw_cos;
-            camera.z -= 0.5 * yaw_sin;
-        } else if is_key_down(KeyCode::D) {
-            camera.x += 0.5 * yaw_cos;
-            camera.z += 0.5 * yaw_sin;
-        } else if is_key_down(KeyCode::W) {
-            camera.x += 0.5 * pitch_cos * yaw_sin;
-            camera.y += 0.5 * pitch_sin;
-            camera.z -= 0.5 * pitch_cos * yaw_cos;
-        } else if is_key_down(KeyCode::S) {
-            camera.x -= 0.5 * pitch_cos * yaw_sin;
-            camera.y -= 0.5 * pitch_sin;
-            camera.z += 0.5 * pitch_cos * yaw_cos;
-        } else if is_key_down(KeyCode::Q) {
-            camera.y -= 0.5
-        } else if is_key_down(KeyCode::E) {
-            camera.y += 0.5
-        }
-
         if vertices {
             for v in &vs {
-                point(transform(*v, camera, yaw, pitch))
+                point(transform(*v, camera, yaw, pitch));
             }
         }
 
