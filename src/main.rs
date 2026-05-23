@@ -1,14 +1,10 @@
 use macroquad::prelude::*;
-use macroquad::ui::{
-    hash, root_ui,
-    widgets
-};
+use macroquad::ui::{hash, root_ui, widgets};
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-#[derive(Copy, Clone)]
 struct Camera {
     x: f32,
     y: f32,
@@ -18,11 +14,11 @@ struct Camera {
     fov: f32,
 }
 
-fn point(pos: Vec2) -> () {
+fn draw_point(pos: Vec2) -> () {
     draw_circle(pos.x, pos.y, 5.0, DARKGREEN);
 }
 
-fn line(p1: Vec2, p2: Vec2, camera: Camera, end1: Vec3, end2: Vec3) -> () {
+fn draw_edge(p1: Vec2, p2: Vec2, camera: &Camera, end1: Vec3, end2: Vec3) -> () {
     let distance1: f32 =
         ((camera.x - end1.x).powi(2) + (camera.y - end1.y).powi(2) + (camera.z - end1.z).powi(2))
             .sqrt();
@@ -48,39 +44,39 @@ fn screen(point: Vec2) -> Vec2 {
     )
 }
 
-fn project(vertice: Vec3, fov: f32) -> Vec2 {
-    Vec2::new((vertice.x / vertice.z) * fov, (vertice.y / vertice.z) * fov)
+fn project(vertex: Vec3, fov: f32) -> Vec2 {
+    Vec2::new((vertex.x / vertex.z) * fov, (vertex.y / vertex.z) * fov)
 }
 
-fn rotate_xz(vertice: Vec3, angle: f32) -> Vec3 {
+fn rotate_xz(vertex: Vec3, angle: f32) -> Vec3 {
     let sin = angle.sin();
     let cos = angle.cos();
     Vec3::new(
-        vertice.x * cos - vertice.z * sin,
-        vertice.y,
-        vertice.x * sin + vertice.z * cos,
+        vertex.x * cos - vertex.z * sin,
+        vertex.y,
+        vertex.x * sin + vertex.z * cos,
     )
 }
 
-fn rotate_yz(vertice: Vec3, angle: f32) -> Vec3 {
+fn rotate_yz(vertex: Vec3, angle: f32) -> Vec3 {
     let sin = angle.sin();
     let cos = angle.cos();
     Vec3::new(
-        vertice.x,
-        vertice.y * cos - vertice.z * sin,
-        vertice.y * sin + vertice.z * cos,
+        vertex.x,
+        vertex.y * cos - vertex.z * sin,
+        vertex.y * sin + vertex.z * cos,
     )
 }
 
-fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
+fn transform_camera(vertex: Vec3, camera: &Camera) -> Vec3 {
     let yaw_sin = camera.yaw.sin();
     let yaw_cos = camera.yaw.cos();
     let pitch_sin = camera.pitch.sin();
     let pitch_cos = camera.pitch.cos();
     let translated: Vec3 = Vec3::new(
-        vertice.x - camera.x,
-        vertice.y - camera.y,
-        vertice.z + camera.z,
+        vertex.x - camera.x,
+        vertex.y - camera.y,
+        vertex.z + camera.z,
     );
     let rotated_xz: Vec3 = Vec3::new(
         translated.x * yaw_cos - translated.z * yaw_sin,
@@ -94,14 +90,14 @@ fn transform_camera(vertice: Vec3, camera: Camera) -> Vec3 {
     )
 }
 
-fn transform(vertice: Vec3, camera: Camera, yaw: f32, pitch: f32) -> Vec2 {
+fn transform(vertex: Vec3, camera: &Camera, yaw: f32, pitch: f32) -> Vec2 {
     screen(project(
-        transform_camera(rotate_yz(rotate_xz(vertice, yaw), pitch), camera),
+        transform_camera(rotate_yz(rotate_xz(vertex, yaw), pitch), camera),
         camera.fov,
     ))
 }
 
-fn load_obj(path: &Path, vertice_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
+fn load_obj(path: &Path, vertex_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
     let mut vs: Vec<Vec3> = Vec::new();
     let mut fs: Vec<Vec<u16>> = Vec::new();
     let display = path.display();
@@ -120,7 +116,9 @@ fn load_obj(path: &Path, vertice_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
     let mut file_iterator = s.split("\n");
 
     while let Some(line) = file_iterator.next() {
-        let Some(line_type) = line.get(0..2) else { continue };
+        let Some(line_type) = line.get(0..2) else {
+            continue;
+        };
         if line_type == "v " {
             let mut values = line.trim().split(" ").filter(|&x| !x.is_empty());
             values.next();
@@ -134,7 +132,9 @@ fn load_obj(path: &Path, vertice_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
             let mut face: Vec<u16> = Vec::new();
             triangles.next();
             while let Some(index) = triangles.next() {
-                face.push(index.split("/").next().unwrap().parse::<u16>().unwrap() + vertice_offset - 1)
+                face.push(
+                    index.split("/").next().unwrap().parse::<u16>().unwrap() + vertex_offset - 1,
+                )
             }
             fs.push(face);
         }
@@ -184,7 +184,7 @@ async fn main() {
                 draw_text(item, 0.0, 35.0 + (20.0 * i as f32), 30.0, WHITE);
             }
         }
-        
+
         let yaw_sin = camera.yaw.sin();
         let yaw_cos = camera.yaw.cos();
         let pitch_sin = camera.pitch.sin();
@@ -198,10 +198,7 @@ async fn main() {
             widgets::InputText::new(hash!())
                 .label("Enter Command")
                 .size(Vec2::new(screen_width(), 30.0))
-                .position(Vec2::new(
-                    screen_width() / 4.0,
-                    screen_height() - 30.0
-                ))
+                .position(Vec2::new(screen_width() / 4.0, screen_height() - 30.0))
                 .ui(&mut root_ui(), &mut command);
         } else {
             if !command.is_empty() {
@@ -213,35 +210,42 @@ async fn main() {
 
             if is_key_pressed(KeyCode::Space) {
                 rotate = !rotate;
-            } else if is_key_pressed(KeyCode::L) {
+            }
+            if is_key_pressed(KeyCode::L) {
                 edges = !edges;
-            } else if is_key_pressed(KeyCode::V) {
+            }
+            if is_key_pressed(KeyCode::V) {
                 vertices = !vertices;
-            } else if is_key_pressed(KeyCode::H) {
+            }
+            if is_key_pressed(KeyCode::H) {
                 hud = !hud;
             }
 
             if is_key_down(KeyCode::A) {
                 camera.x -= 0.5 * yaw_cos;
                 camera.z -= 0.5 * yaw_sin;
-            } else if is_key_down(KeyCode::D) {
+            }
+            if is_key_down(KeyCode::D) {
                 camera.x += 0.5 * yaw_cos;
                 camera.z += 0.5 * yaw_sin;
-            } else if is_key_down(KeyCode::W) {
+            }
+            if is_key_down(KeyCode::W) {
                 camera.x += 0.5 * pitch_cos * yaw_sin;
                 camera.y += 0.5 * pitch_sin;
                 camera.z -= 0.5 * pitch_cos * yaw_cos;
-            } else if is_key_down(KeyCode::S) {
+            }
+            if is_key_down(KeyCode::S) {
                 camera.x -= 0.5 * pitch_cos * yaw_sin;
                 camera.y -= 0.5 * pitch_sin;
                 camera.z += 0.5 * pitch_cos * yaw_cos;
-            } else if is_key_down(KeyCode::Q) {
+            }
+            if is_key_down(KeyCode::Q) {
                 camera.y -= 0.5;
-            } else if is_key_down(KeyCode::E) {
+            }
+            if is_key_down(KeyCode::E) {
                 camera.y += 0.5;
             }
         }
-
 
         camera.fov = (camera.fov + mouse_wheel().1 / 2.0).clamp(0.5, 10.0);
 
@@ -256,7 +260,7 @@ async fn main() {
 
         if vertices {
             for v in &vs {
-                point(transform(*v, camera, yaw, pitch));
+                draw_point(transform(*v, &camera, yaw, pitch));
             }
         }
 
@@ -265,12 +269,12 @@ async fn main() {
                 for i in 0..f.len() {
                     let a = vs[f[i] as usize];
                     let b = vs[f[(i + 1) % f.len()] as usize];
-                    line(
-                        transform(a, camera, yaw, pitch),
-                        transform(b, camera, yaw, pitch),
-                        camera,
-                        transform_camera(a, camera),
-                        transform_camera(b, camera),
+                    draw_edge(
+                        transform(a, &camera, yaw, pitch),
+                        transform(b, &camera, yaw, pitch),
+                        &camera,
+                        transform_camera(a, &camera),
+                        transform_camera(b, &camera),
                     );
                 }
             }
