@@ -14,24 +14,35 @@ struct Camera {
     fov: f32,
 }
 
+impl Camera {
+    fn to_vec(&self) -> Vec3 {
+        Vec3::new(
+            self.x,
+            self.y,
+            self.z
+        )
+    }
+}
+
 fn draw_point(pos: Vec2) -> () {
     draw_circle(pos.x, pos.y, 5.0, DARKGREEN);
 }
 
-fn draw_edge(p1: Vec2, p2: Vec2, camera: &Camera, end1: Vec3, end2: Vec3) -> () {
-    let distance1: f32 =
-        ((camera.x - end1.x).powi(2) + (camera.y - end1.y).powi(2) + (camera.z - end1.z).powi(2))
-            .sqrt();
-    let distance2: f32 =
-        ((camera.x - end2.x).powi(2) + (camera.y - end2.y).powi(2) + (camera.z - end2.z).powi(2))
-            .sqrt();
-    let mean_distance = (distance1 + distance2) / 2.0;
+fn draw_edge(p1: Vec2, p2: Vec2, end1: Vec3, end2: Vec3) -> () {
+    let neg_hundred: Vec2 = Vec2::splat(-100.0);
+    let width_plus_hundred: Vec2 = Vec2::splat(screen_width() + 100.0);
+    // The 2 lines below checks if either point is
+    // 100 below screen or 100 over screen.
+    // If it is, the edge will not be drawn (function will return).
+    if p1.cmple(neg_hundred).any() || p2.cmple(neg_hundred).any() { return }
+    if p1.cmpgt(width_plus_hundred).any() || p2.cmpgt(width_plus_hundred).any() { return }
+    if (end1.z + end2.z).is_sign_negative() { return }
     draw_line(
         p1.x,
         p1.y,
         p2.x,
         p2.y,
-        (10.0 / mean_distance).clamp(1.5, 3.0),
+        10.0 / ((end1.z + end2.z) / 2.0),
         GREEN,
     );
 }
@@ -272,7 +283,6 @@ async fn main() {
                     draw_edge(
                         transform(a, &camera, yaw, pitch),
                         transform(b, &camera, yaw, pitch),
-                        &camera,
                         transform_camera(a, &camera),
                         transform_camera(b, &camera),
                     );
