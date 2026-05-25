@@ -24,11 +24,36 @@ impl Camera {
     }
 }
 
+fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, pitch: f32) -> () {
+    let mut face_vertices: Vec<Vec3> = Vec::new();
+    for i in 0..face.len() {
+        let vertex = vertices[face[i] as usize];
+        face_vertices.push(vertex);
+    }
+    let v1 = transform_camera(rotate_yz(rotate_xz(face_vertices[0], yaw), pitch), camera);
+    let v2 = transform_camera(rotate_yz(rotate_xz(face_vertices[1], yaw), pitch), camera);
+    let v3 = transform_camera(rotate_yz(rotate_xz(face_vertices[2], yaw), pitch), camera);
+    if (Vec3::from(v2 - v1))
+        .cross(v3 - v1)
+        .z.is_sign_positive() { return };
+    for i in 0..face_vertices.len() {
+        let a = face_vertices[i];
+        let b = face_vertices[(i + 1) % face_vertices.len()];
+        draw_edge(
+            transform(a, camera, yaw, pitch),
+            transform(b, camera, yaw, pitch),
+            transform_camera(a, camera),
+            transform_camera(b, camera),
+            GREEN
+        );
+    }
+}
+
 fn draw_point(pos: Vec2) -> () {
     draw_circle(pos.x, pos.y, 5.0, DARKGREEN);
 }
 
-fn draw_edge(p1: Vec2, p2: Vec2, end1: Vec3, end2: Vec3) -> () {
+fn draw_edge(p1: Vec2, p2: Vec2, end1: Vec3, end2: Vec3, color: Color) -> () {
     let neg_hundred: Vec2 = Vec2::splat(-100.0);
     let width_plus_hundred: Vec2 = Vec2::splat(screen_width() + 100.0);
     // The 2 lines below checks if either point is
@@ -43,7 +68,7 @@ fn draw_edge(p1: Vec2, p2: Vec2, end1: Vec3, end2: Vec3) -> () {
         p2.x,
         p2.y,
         (10.0 / ((end1.z + end2.z) / 2.0)).clamp(0.25, 10.0),
-        GREEN,
+        color,
     );
 }
 
@@ -277,16 +302,7 @@ async fn main() {
 
         if edges {
             for f in &fs {
-                for i in 0..f.len() {
-                    let a = vs[f[i] as usize];
-                    let b = vs[f[(i + 1) % f.len()] as usize];
-                    draw_edge(
-                        transform(a, &camera, yaw, pitch),
-                        transform(b, &camera, yaw, pitch),
-                        transform_camera(a, &camera),
-                        transform_camera(b, &camera),
-                    );
-                }
+                draw_face(f, &vs, &camera, yaw, pitch)
             }
         }
 
