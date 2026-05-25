@@ -24,7 +24,7 @@ impl Camera {
     }
 }
 
-fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, pitch: f32) -> () {
+fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, pitch: f32, bf_culling: bool) -> () {
     let mut face_vertices: Vec<Vec3> = Vec::new();
     for i in 0..face.len() {
         let vertex = vertices[face[i] as usize];
@@ -35,7 +35,7 @@ fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, p
     let v3 = transform_camera(rotate_yz(rotate_xz(face_vertices[2], yaw), pitch), camera);
     if (Vec3::from(v2 - v1))
         .cross(v3 - v1)
-        .z.is_sign_positive() { return };
+        .z.is_sign_positive() && bf_culling { return };
     for i in 0..face_vertices.len() {
         let a = face_vertices[i];
         let b = face_vertices[(i + 1) % face_vertices.len()];
@@ -187,6 +187,7 @@ async fn main() {
     let mut edges: bool = true;
     let mut vertices: bool = false;
     let mut hud: bool = true;
+    let mut do_backface_culling: bool = true;
     let mut camera: Camera = Camera {
         x: 0.0,
         y: 0.0,
@@ -256,6 +257,9 @@ async fn main() {
             if is_key_pressed(KeyCode::H) {
                 hud = !hud;
             }
+            if is_key_pressed(KeyCode::B) {
+                do_backface_culling = !do_backface_culling;
+            }
 
             if is_key_down(KeyCode::A) {
                 camera.x -= 0.5 * yaw_cos;
@@ -302,7 +306,7 @@ async fn main() {
 
         if edges {
             for f in &fs {
-                draw_face(f, &vs, &camera, yaw, pitch)
+                draw_face(f, &vs, &camera, yaw, pitch, do_backface_culling)
             }
         }
 
