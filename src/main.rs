@@ -42,7 +42,7 @@ fn draw_edge(p1: Vec2, p2: Vec2, end1: Vec3, end2: Vec3) -> () {
         p1.y,
         p2.x,
         p2.y,
-        10.0 / ((end1.z + end2.z) / 2.0),
+        (10.0 / ((end1.z + end2.z) / 2.0)).clamp(0.25, 10.0),
         GREEN,
     );
 }
