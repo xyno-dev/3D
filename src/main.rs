@@ -1,10 +1,6 @@
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
-
 struct Camera {
     x: f32,
     y: f32,
@@ -133,22 +129,11 @@ fn transform(vertex: Vec3, camera: &Camera, yaw: f32, pitch: f32) -> Vec2 {
     ))
 }
 
-fn load_obj(path: &Path, vertex_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
+fn parse_obj(obj: Vec<u8>, vertex_offset: u16) -> (Vec<Vec3>, Vec<Vec<u16>>) {
     let mut vs: Vec<Vec3> = Vec::new();
     let mut fs: Vec<Vec<u16>> = Vec::new();
-    let display = path.display();
 
-    let mut file = match File::open(&path) {
-        Err(why) => panic!("Couldn't open {}: {}", display, why),
-        Ok(file) => file,
-    };
-
-    let mut s = String::new();
-    match file.read_to_string(&mut s) {
-        Err(why) => panic!("Couldn't read {}: {}", display, why),
-        Ok(_) => println!("Successfully opened {}", display),
-    }
-
+    let s = String::from_utf8(obj).unwrap();
     let mut file_iterator = s.split("\n");
 
     while let Some(line) = file_iterator.next() {
@@ -239,7 +224,10 @@ async fn main() {
                 .ui(&mut root_ui(), &mut command);
         } else {
             if !command.is_empty() {
-                let (mut new_vs, mut new_fs) = load_obj(&Path::new(&command), vs.len() as u16);
+                let (mut new_vs, mut new_fs) = parse_obj(
+                    load_file(&command).await.unwrap(),
+                    vs.len() as u16
+                );
                 vs.append(&mut new_vs);
                 fs.append(&mut new_fs);
                 command = String::new();
