@@ -224,13 +224,19 @@ async fn main() {
                 .ui(&mut root_ui(), &mut command);
         } else {
             if !command.is_empty() {
-                let (mut new_vs, mut new_fs) = parse_obj(
-                    load_file(&command).await.unwrap(),
-                    vs.len() as u16
-                );
-                vs.append(&mut new_vs);
-                fs.append(&mut new_fs);
-                command = String::new();
+                let args = &command.split(" ").collect::<Vec<&str>>()[1..];
+                match command.split(" ").collect::<Vec<&str>>()[0] {
+                    "load" => {
+                        let (mut new_vs, mut new_fs) = parse_obj(
+                            load_file(args[0]).await.unwrap(),
+                            vs.len() as u16
+                        );
+                        vs.append(&mut new_vs);
+                        fs.append(&mut new_fs);
+                        command = String::new();
+                    },
+                    _ => command = String::new()
+                }
             }
 
             if is_key_pressed(KeyCode::Space) {
