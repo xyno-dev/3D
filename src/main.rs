@@ -20,7 +20,7 @@ impl Camera {
     }
 }
 
-fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, pitch: f32, bf_culling: bool) -> () {
+fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, pitch: f32, bf_culling: bool, color: Color) -> () {
     let mut face_vertices: Vec<Vec3> = Vec::new();
     for i in 0..face.len() {
         let vertex = vertices[face[i] as usize];
@@ -40,7 +40,7 @@ fn draw_face(face: &Vec<u16>, vertices: &Vec<Vec3>, camera: &Camera, yaw: f32, p
             transform(b, camera, yaw, pitch),
             transform_camera(a, camera),
             transform_camera(b, camera),
-            GREEN
+            color
         );
     }
 }
@@ -181,6 +181,7 @@ async fn main() {
         pitch: 0.0,
         fov: 1.0,
     };
+    let mut color = GREEN;
     let mut command: String = String::new();
     let mut typing_command: bool = false;
 
@@ -233,10 +234,17 @@ async fn main() {
                         );
                         vs.append(&mut new_vs);
                         fs.append(&mut new_fs);
-                        command = String::new();
                     },
-                    _ => command = String::new()
+                    "color" => {
+                        let r = args[0].parse::<u8>().unwrap();
+                        let g = args[1].parse::<u8>().unwrap();
+                        let b = args[2].parse::<u8>().unwrap();
+                        let a = args[3].parse::<u8>().unwrap();
+                        color = Color::from_rgba(r, g, b, a);
+                    },
+                    _ => println!("Invalid command!")
                 }
+                command = String::new();
             }
 
             if is_key_pressed(KeyCode::Space) {
@@ -300,7 +308,7 @@ async fn main() {
 
         if edges {
             for f in &fs {
-                draw_face(f, &vs, &camera, yaw, pitch, do_backface_culling)
+                draw_face(f, &vs, &camera, yaw, pitch, do_backface_culling, color)
             }
         }
 
